@@ -1,0 +1,142 @@
+{{- if .Values.agent.enabled }}
+{{- $component := dict "root" . "component" "agent" }}
+{{- with .Values.agent }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "runner.fullname" $ }}-agent
+  labels:
+    {{- include "runner.labels" $ | nindent 4 }}
+    {{- include "runner.selectorLabels" $component | nindent 4 }}
+    app.kubernetes.io/version: {{ .image.tag | default $.Chart.AppVersion | quote }}
+spec:
+  replicas: {{ .replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "runner.selectorLabels" $component | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- if .registration.token }}
+        checksum/token: {{ .registration.token | sha256sum }}
+        {{- end }}
+        {{- with .podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "runner.selectorLabels" $component | nindent 8 }}
+        {{- with .podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "runner.serviceAccountName" $ }}
+      automountServiceAccountToken: {{ $.Values.serviceAccount.automountServiceAccountToken }}
+      terminationGracePeriodSeconds: {{ .terminationGracePeriodSeconds }}
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      containers:
+        - name: agent
+          image: "{{ .image.repository }}:{{ .image.tag | default $.Chart.AppVersion }}"
+          imagePullPolicy: {{ .image.pullPolicy }}
+          args: ["run"]
+          securityContext:
+            {{- toYaml $.Values.securityContext | nindent 12 }}
+          env:
+            - name: IDP_URL
+              value: {{ include "runner.idpUrl" $ | quote }}
+            - name: REGISTRATION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "runner.tokenSecretName" $component }}
+                  key: {{ include "runner.tokenSecretKey" $component }}
+            # How the runner shows in its pool.
+            - name: RUNNER_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: WORK_DIR
+              value: /work
+            # The root filesystem is read-only: everything else writable lives on /tmp.
+            - name: HOME
+              value: /tmp
+            - name: TMPDIR
+              value: /tmp
+            - name: MODEL_PROVIDER
+              value: {{ .model.provider | quote }}
+            {{- with .model.map }}
+            - name: MODEL_MAP
+              value: {{ toJson . | quote }}
+            {{- end }}
+            {{- with .model.override }}
+            - name: MODEL_OVERRIDE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .terraformReleasesUrl }}
+            - name: TERRAFORM_RELEASES_URL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .opentofuReleasesUrl }}
+            - name: OPENTOFU_RELEASES_URL
+              value: {{ . | quote }}
+            {{- end }}
+            - name: LOG_LEVEL
+              value: {{ .logLevel | quote }}
+            {{- include "runner.proxyEnv" $ | nindent 12 }}
+            {{- with .extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if or .model.existingSecret .extraEnvFrom }}
+          envFrom:
+            {{- with .model.existingSecret }}
+            - secretRef:
+                name: {{ . }}
+            {{- end }}
+            {{- with .extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          {{- with .livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .resources | nindent 12 }}
+          volumeMounts:
+            - name: work
+              mountPath: /work
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # Each run clones into its own directory here, removed when the run ends. Must allow running
+        # programs (the fmt check's terraform and git's credential helper run from it).
+        - name: work
+          emptyDir:
+            sizeLimit: {{ .workDir.sizeLimit }}
+        - name: tmp
+          emptyDir:
+            sizeLimit: 1Gi
+      {{- with .nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- end }}

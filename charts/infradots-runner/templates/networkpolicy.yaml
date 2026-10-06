@@ -1,0 +1,38 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "runner.fullname" . }}
+  labels:
+    {{- include "runner.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "runner.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  # Ingress listed with no rules: nothing may connect to the runners (they serve nothing).
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    # DNS, wherever the cluster resolver lives.
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        {{- range .Values.networkPolicy.egress.cidrs }}
+        - ipBlock:
+            cidr: {{ . }}
+            {{- with $.Values.networkPolicy.egress.exceptCidrs }}
+            except:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+        {{- end }}
+      ports:
+        {{- range .Values.networkPolicy.egress.ports }}
+        - protocol: TCP
+          port: {{ . }}
+        {{- end }}
+{{- end }}

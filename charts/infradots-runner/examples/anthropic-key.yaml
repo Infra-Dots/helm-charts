@@ -1,0 +1,10 @@
+# The agent runner on the Anthropic API with your own key.
+#   kubectl create secret generic infradots-agent-pool --from-literal=REGISTRATION_TOKEN=<agent pool token>
+#   kubectl create secret generic anthropic --from-literal=ANTHROPIC_API_KEY=<key>
+#   helm install runners infradots/infradots-runner -f anthropic-key.yaml
+agent:
+  registration:
+    existingSecret: infradots-agent-pool
+  model:
+    provider: anthropic
+    existingSecret: anthropic

@@ -1,0 +1,16 @@
+InfraDots runners for {{ include "runner.idpUrl" . }}:
+{{- if .Values.agent.enabled }}
+
+  Agent runner ({{ .Values.agent.replicaCount }} replica(s), models via {{ .Values.agent.model.provider }})
+    Check its setup -- configuration, work dir, git, the platform and token, one tiny request per model:
+      kubectl -n {{ .Release.Namespace }} exec deploy/{{ include "runner.fullname" . }}-agent -- idp-agent doctor
+    Then route runs to it: assign the agent pool to an organization or workspace (settings -> agent pool).
+{{- end }}
+{{- if .Values.executor.enabled }}
+
+  Executor ({{ .Values.executor.replicaCount }} replica(s))
+    Assign the executor pool to workspaces (workspace settings -> worker pool).
+{{- end }}
+
+Each runner shows in its pool (organization settings -> Worker Pools) once it registers:
+  kubectl -n {{ .Release.Namespace }} logs -l app.kubernetes.io/instance={{ .Release.Name }} --prefix --tail=20

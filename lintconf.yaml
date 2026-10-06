@@ -1,0 +1,10 @@
+# yamllint, as chart-testing runs it on Chart.yaml and values files.
+extends: default
+rules:
+  line-length:
+    max: 120
+  comments:
+    min-spaces-from-content: 1
+  document-start: disable
+  truthy:
+    check-keys: false

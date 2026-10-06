@@ -1,0 +1,17 @@
+# Behind a corporate egress proxy, with egress limited to the proxy and DNS.
+agent:
+  registration:
+    existingSecret: infradots-agent-pool
+  model:
+    existingSecret: anthropic
+proxy:
+  httpsProxy: http://proxy.corp.internal:3128
+  httpProxy: http://proxy.corp.internal:3128
+  noProxy: .cluster.local,.svc,10.0.0.0/8
+networkPolicy:
+  enabled: true
+  egress:
+    cidrs:
+      - 10.20.30.40/32   # the proxy
+    ports:
+      - 3128

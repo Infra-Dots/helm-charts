@@ -1,0 +1,12 @@
+# chart-testing install: an agent runner pointed at nothing. It keeps retrying registration (and stays
+# Running), which is enough to prove the pod starts under the hardened defaults.
+idpUrl: http://127.0.0.1:9
+agent:
+  registration:
+    token: ci-token
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+networkPolicy:
+  enabled: true

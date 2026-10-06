@@ -1,0 +1,16 @@
+# Claude through AWS Bedrock in your account, with IRSA (no static keys). The role needs
+# bedrock:InvokeModel and bedrock:InvokeModelWithResponseStream on the mapped models/inference profiles.
+agent:
+  registration:
+    existingSecret: infradots-agent-pool
+  model:
+    provider: bedrock
+    map:
+      claude-opus-5: eu.anthropic.claude-opus-5-v1:0
+      claude-sonnet-5: eu.anthropic.claude-sonnet-5-v1:0
+  extraEnv:
+    - name: AWS_REGION
+      value: eu-west-1
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/infradots-runner-bedrock

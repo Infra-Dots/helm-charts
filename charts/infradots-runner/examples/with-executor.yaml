@@ -1,0 +1,11 @@
+# The agent runner and the Terraform/OpenTofu executor, each registered with its own pool.
+agent:
+  registration:
+    existingSecret: infradots-agent-pool
+  model:
+    existingSecret: anthropic
+executor:
+  enabled: true
+  replicaCount: 2
+  registration:
+    existingSecret: infradots-executor-pool

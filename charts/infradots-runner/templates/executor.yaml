@@ -1,0 +1,131 @@
+{{- if .Values.executor.enabled }}
+{{- $component := dict "root" . "component" "executor" }}
+{{- with .Values.executor }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "runner.fullname" $ }}-executor
+  labels:
+    {{- include "runner.labels" $ | nindent 4 }}
+    {{- include "runner.selectorLabels" $component | nindent 4 }}
+    app.kubernetes.io/version: {{ .image.tag | quote }}
+spec:
+  replicas: {{ .replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "runner.selectorLabels" $component | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- if .registration.token }}
+        checksum/token: {{ .registration.token | sha256sum }}
+        {{- end }}
+        {{- with .podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "runner.selectorLabels" $component | nindent 8 }}
+        {{- with .podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "runner.serviceAccountName" $ }}
+      automountServiceAccountToken: {{ $.Values.serviceAccount.automountServiceAccountToken }}
+      terminationGracePeriodSeconds: {{ .terminationGracePeriodSeconds }}
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      containers:
+        - name: executor
+          image: "{{ .image.repository }}:{{ .image.tag }}"
+          imagePullPolicy: {{ .image.pullPolicy }}
+          securityContext:
+            {{- toYaml $.Values.securityContext | nindent 12 }}
+          env:
+            - name: REGISTRATION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "runner.tokenSecretName" $component }}
+                  key: {{ include "runner.tokenSecretKey" $component }}
+            - name: BASE_URL
+              value: "{{ include "runner.idpUrl" $ }}/api/workers"
+            - name: WEBSOCKET_URL
+              value: {{ include "runner.websocketUrl" $ | quote }}
+            - name: WORKING_DIR
+              value: /app/work
+            - name: EXECUTABLE_CACHE_ENABLED
+              value: {{ .executableCache.enabled | quote }}
+            - name: EXECUTABLE_CACHE_DIR
+              value: /app/cache
+            # The root filesystem is read-only: HOME (terraform's and git's files) moves to /tmp, and
+            # tflint keeps using the ruleset plugins baked into the image.
+            - name: HOME
+              value: /tmp
+            - name: TFLINT_PLUGIN_DIR
+              value: /home/appuser/.tflint.d/plugins
+            {{- with .terraformReleasesUrl }}
+            - name: TERRAFORM_RELEASES_URL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .terragruntReleasesUrl }}
+            - name: TERRAGRUNT_RELEASES_URL
+              value: {{ . | quote }}
+            {{- end }}
+            - name: LOG_LEVEL
+              value: {{ .logLevel | quote }}
+            {{- include "runner.proxyEnv" $ | nindent 12 }}
+            {{- with .extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .resources | nindent 12 }}
+          volumeMounts:
+            - name: work
+              mountPath: /app/work
+            - name: cache
+              mountPath: /app/cache
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # Wiped between jobs. Terraform binaries and providers run from here.
+        - name: work
+          emptyDir:
+            sizeLimit: {{ .workDir.sizeLimit }}
+        - name: cache
+          emptyDir:
+            sizeLimit: {{ .executableCache.sizeLimit }}
+        - name: tmp
+          emptyDir:
+            sizeLimit: 2Gi
+      {{- with .nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- end }}

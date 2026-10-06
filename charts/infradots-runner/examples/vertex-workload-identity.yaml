@@ -1,0 +1,18 @@
+# Claude through Google Vertex AI, with GKE Workload Identity (no static keys). The Google service
+# account needs roles/aiplatform.user in the project.
+agent:
+  registration:
+    existingSecret: infradots-agent-pool
+  model:
+    provider: vertex
+    map:
+      claude-opus-5: claude-opus-5@<version>
+      claude-sonnet-5: claude-sonnet-5@<version>
+  extraEnv:
+    - name: CLOUD_ML_REGION
+      value: europe-west1
+    - name: ANTHROPIC_VERTEX_PROJECT_ID
+      value: my-project
+serviceAccount:
+  annotations:
+    iam.gke.io/gcp-service-account: infradots-runner@my-project.iam.gserviceaccount.com

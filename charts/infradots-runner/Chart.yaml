@@ -1,0 +1,32 @@
+apiVersion: v2
+name: infradots-runner
+description: >-
+  InfraDots runners in your own cluster: the agent runner, which reviews and implements infrastructure
+  changes with your own model account, and the Terraform/OpenTofu executor.
+type: application
+# The chart's own version. Bump it on every change: a merge to main publishes each new version.
+version: 0.1.0
+# The agent runner's version (the executor's is executor.image.tag).
+appVersion: "0.5.0"
+kubeVersion: ">=1.25.0-0"
+home: https://infradots.com
+sources:
+  - https://github.com/Infra-Dots/helm-charts
+keywords:
+  - infradots
+  - terraform
+  - opentofu
+  - infrastructure-as-code
+  - ai-agent
+maintainers:
+  - name: InfraDots
+    url: https://infradots.com
+annotations:
+  artifacthub.io/images: |
+    - name: idp-agent
+      image: public.ecr.aws/e5i7i1j1/idp-agent:0.5.0
+    - name: idp-executor
+      image: public.ecr.aws/e5i7i1j1/idp-executor:1.9.0
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://infradots.com/docs/self-hosted-runners

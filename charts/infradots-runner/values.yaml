@@ -1,0 +1,166 @@
+# The InfraDots platform the runners register with. Both only make outbound HTTPS calls to it.
+idpUrl: https://app.infradots.com
+
+# The agent runner: claims the review and implementation runs routed to its agent pool and carries
+# each out -- clones the repository with credentials the platform leases for that run, runs the agent
+# against your own model account, and reports the result. One run at a time per replica.
+agent:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/e5i7i1j1/idp-agent
+    # Defaults to the chart's appVersion.
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  # The agent pool's registration token (Worker Pools -> create a pool of kind "agent").
+  registration:
+    # Recommended: a Secret you create, e.g.
+    #   kubectl create secret generic infradots-agent-pool --from-literal=REGISTRATION_TOKEN=<token>
+    existingSecret: ""
+    existingSecretKey: REGISTRATION_TOKEN
+    # Or the token itself; the chart then creates the Secret.
+    token: ""
+
+  # Where the agent's model calls go. The platform chooses which Claude model each agent uses; this only
+  # changes where the call is made.
+  model:
+    # anthropic | bedrock | vertex | foundry
+    provider: anthropic
+    # The platform's model names -> your provider's model ids. Required for every model the platform
+    # uses when the provider isn't anthropic, e.g. for bedrock:
+    #   claude-opus-5: eu.anthropic.claude-opus-5-v1:0
+    #   claude-sonnet-5: eu.anthropic.claude-sonnet-5-v1:0
+    map: {}
+    # A Secret with the provider's credentials as environment variables, e.g. ANTHROPIC_API_KEY, or
+    # ANTHROPIC_FOUNDRY_API_KEY + ANTHROPIC_FOUNDRY_RESOURCE. For Bedrock and Vertex prefer workload
+    # identity (serviceAccount.annotations) over static keys.
+    existingSecret: ""
+    # Advanced: run every agent on this one pydantic-ai model string instead.
+    override: ""
+
+  # Mirrors for the review's fmt pre-check downloads (default: HashiCorp / GitHub releases).
+  terraformReleasesUrl: ""
+  opentofuReleasesUrl: ""
+  logLevel: INFO
+
+  # The work directory (each run's clone, removed when the run ends).
+  workDir:
+    sizeLimit: 10Gi
+
+  # SIGTERM stops the runner at once: a run in progress is reported as interrupted.
+  terminationGracePeriodSeconds: 60
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 2Gi
+
+  extraEnv: []
+  extraEnvFrom: []
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  priorityClassName: ""
+  livenessProbe: {}
+  readinessProbe: {}
+
+# The Terraform/OpenTofu/Terragrunt executor: runs the plans and applies of the workspaces assigned to
+# its executor pool. One job at a time per replica.
+executor:
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/e5i7i1j1/idp-executor
+    tag: "1.9.0"
+    pullPolicy: IfNotPresent
+
+  # The executor pool's registration token (Worker Pools -> create a pool of kind "executor").
+  registration:
+    existingSecret: ""
+    existingSecretKey: REGISTRATION_TOKEN
+    token: ""
+
+  # Keep downloaded terraform/tofu/terragrunt binaries between jobs (for the pod's lifetime).
+  executableCache:
+    enabled: true
+    sizeLimit: 2Gi
+  workDir:
+    sizeLimit: 10Gi
+
+  # Mirrors for terraform and terragrunt downloads.
+  terraformReleasesUrl: ""
+  terragruntReleasesUrl: ""
+  logLevel: INFO
+
+  # SIGTERM lets the job in progress finish before the executor exits, so give it as long as your
+  # longest apply. Shorter, and a rollout can stop an apply half-way.
+  terminationGracePeriodSeconds: 3600
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      memory: 2Gi
+
+  extraEnv: []
+  extraEnvFrom: []
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  priorityClassName: ""
+  livenessProbe: {}
+  readinessProbe: {}
+
+# Shared by both components.
+serviceAccount:
+  create: true
+  # Defaults to the release's full name.
+  name: ""
+  # For workload identity, e.g. eks.amazonaws.com/role-arn (Bedrock via IRSA) or
+  # iam.gke.io/gcp-service-account (Vertex via GKE Workload Identity).
+  annotations: {}
+  # The runners don't call the Kubernetes API. (Identity webhooks mount their own tokens.)
+  automountServiceAccountToken: false
+
+imagePullSecrets: []
+
+# Corporate egress proxy, for both components.
+proxy:
+  httpsProxy: ""
+  httpProxy: ""
+  noProxy: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+# Egress-only lockdown: no ingress at all (the runners serve nothing), and egress only to DNS and the
+# listed destinations and ports. NetworkPolicy can't filter by hostname; see the chart README for the
+# hosts the runners reach, to pin with egress.cidrs or an egress proxy.
+networkPolicy:
+  enabled: false
+  egress:
+    cidrs:
+      - 0.0.0.0/0
+    # e.g. your pod and service CIDRs, so runners can't reach in-cluster workloads by IP.
+    exceptCidrs: []
+    ports:
+      - 443

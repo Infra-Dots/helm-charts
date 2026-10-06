@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "definitions": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "tag": {"type": "string"},
+        "pullPolicy": {"enum": ["Always", "IfNotPresent", "Never"]}
+      }
+    },
+    "registration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "existingSecret": {"type": "string"},
+        "existingSecretKey": {"type": "string", "minLength": 1},
+        "token": {"type": "string"}
+      }
+    },
+    "sizedDir": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {"sizeLimit": {"type": ["string", "integer"]}}
+    },
+    "pod": {
+      "replicaCount": {"type": "integer", "minimum": 0},
+      "terminationGracePeriodSeconds": {"type": "integer", "minimum": 0},
+      "resources": {"type": "object"},
+      "extraEnv": {"type": "array"},
+      "extraEnvFrom": {"type": "array"},
+      "podAnnotations": {"type": "object"},
+      "podLabels": {"type": "object"},
+      "nodeSelector": {"type": "object"},
+      "tolerations": {"type": "array"},
+      "affinity": {"type": "object"},
+      "priorityClassName": {"type": "string"},
+      "livenessProbe": {"type": "object"},
+      "readinessProbe": {"type": "object"},
+      "logLevel": {"enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]}
+    }
+  },
+  "properties": {
+    "idpUrl": {"type": "string", "pattern": "^https?://[^/]+"},
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "replicaCount": {"$ref": "#/definitions/pod/replicaCount"},
+        "image": {"$ref": "#/definitions/image"},
+        "registration": {"$ref": "#/definitions/registration"},
+        "model": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "provider": {"enum": ["anthropic", "bedrock", "vertex", "foundry"]},
+            "map": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}},
+            "existingSecret": {"type": "string"},
+            "override": {"type": "string"}
+          }
+        },
+        "terraformReleasesUrl": {"type": "string"},
+        "opentofuReleasesUrl": {"type": "string"},
+        "logLevel": {"$ref": "#/definitions/pod/logLevel"},
+        "workDir": {"$ref": "#/definitions/sizedDir"},
+        "terminationGracePeriodSeconds": {"$ref": "#/definitions/pod/terminationGracePeriodSeconds"},
+        "resources": {"$ref": "#/definitions/pod/resources"},
+        "extraEnv": {"$ref": "#/definitions/pod/extraEnv"},
+        "extraEnvFrom": {"$ref": "#/definitions/pod/extraEnvFrom"},
+        "podAnnotations": {"$ref": "#/definitions/pod/podAnnotations"},
+        "podLabels": {"$ref": "#/definitions/pod/podLabels"},
+        "nodeSelector": {"$ref": "#/definitions/pod/nodeSelector"},
+        "tolerations": {"$ref": "#/definitions/pod/tolerations"},
+        "affinity": {"$ref": "#/definitions/pod/affinity"},
+        "priorityClassName": {"$ref": "#/definitions/pod/priorityClassName"},
+        "livenessProbe": {"$ref": "#/definitions/pod/livenessProbe"},
+        "readinessProbe": {"$ref": "#/definitions/pod/readinessProbe"}
+      }
+    },
+    "executor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "replicaCount": {"$ref": "#/definitions/pod/replicaCount"},
+        "image": {"$ref": "#/definitions/image"},
+        "registration": {"$ref": "#/definitions/registration"},
+        "executableCache": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "sizeLimit": {"type": ["string", "integer"]}
+          }
+        },
+        "workDir": {"$ref": "#/definitions/sizedDir"},
+        "terraformReleasesUrl": {"type": "string"},
+        "terragruntReleasesUrl": {"type": "string"},
+        "logLevel": {"$ref": "#/definitions/pod/logLevel"},
+        "terminationGracePeriodSeconds": {"$ref": "#/definitions/pod/terminationGracePeriodSeconds"},
+        "resources": {"$ref": "#/definitions/pod/resources"},
+        "extraEnv": {"$ref": "#/definitions/pod/extraEnv"},
+        "extraEnvFrom": {"$ref": "#/definitions/pod/extraEnvFrom"},
+        "podAnnotations": {"$ref": "#/definitions/pod/podAnnotations"},
+        "podLabels": {"$ref": "#/definitions/pod/podLabels"},
+        "nodeSelector": {"$ref": "#/definitions/pod/nodeSelector"},
+        "tolerations": {"$ref": "#/definitions/pod/tolerations"},
+        "affinity": {"$ref": "#/definitions/pod/affinity"},
+        "priorityClassName": {"$ref": "#/definitions/pod/priorityClassName"},
+        "livenessProbe": {"$ref": "#/definitions/pod/livenessProbe"},
+        "readinessProbe": {"$ref": "#/definitions/pod/readinessProbe"}
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": {"type": "boolean"},
+        "name": {"type": "string"},
+        "annotations": {"type": "object"},
+        "automountServiceAccountToken": {"type": "boolean"}
+      }
+    },
+    "imagePullSecrets": {"type": "array"},
+    "proxy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "httpsProxy": {"type": "string"},
+        "httpProxy": {"type": "string"},
+        "noProxy": {"type": "string"}
+      }
+    },
+    "podSecurityContext": {"type": "object"},
+    "securityContext": {"type": "object"},
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "egress": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cidrs": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+            "exceptCidrs": {"type": "array", "items": {"type": "string"}},
+            "ports": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": 65535}, "minItems": 1}
+          }
+        }
+      }
+    },
+    "global": {"type": "object"}
+  }
+}
