@@ -22,3 +22,7 @@ Locally:
 ct lint --config ct.yaml --all
 helm template t charts/infradots-runner -f charts/infradots-runner/examples/with-executor.yaml
 ```
+
+## License
+
+[Apache-2.0](LICENSE). The license covers the charts; the runner images are distributed separately.

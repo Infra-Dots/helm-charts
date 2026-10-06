@@ -29,8 +29,9 @@ jobs:
       - name: Set up chart-testing
         uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
 
+      # The version-bump check compares against main, so it only means something on a pull request.
       - name: Lint
-        run: ct lint --config ct.yaml --all
+        run: ct lint --config ct.yaml --all --check-version-increment=${{ github.event_name == 'pull_request' }}
 
       # Every example renders to valid Kubernetes objects (the schema rejects bad values first).
       - name: Validate rendered manifests
